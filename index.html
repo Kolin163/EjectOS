@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EjectOS</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="boot-screen" id="boot">
+    <div class="boot-box">
+      <div class="boot-title">EjectOS booting...</div>
+      <div class="boot-bar" id="boot-bar"></div>
+      <div class="boot-percent" id="boot-percent">0%</div>
+    </div>
+  </div>
+
+  <main class="desktop" id="desktop">
+    <section class="desktop-icons" id="icon-container">
+      <button class="desktop-icon" type="button" data-app="ets2">
+        <img class="desktop-icon__img" src="img/icons/icon1.png" alt="">
+        <span class="desktop-icon__label">ETS2</span>
+      </button>
+
+      <button class="desktop-icon" type="button" data-app="calc">
+        <img class="desktop-icon__img" src="img/icons/icon2.png" alt="">
+        <span class="desktop-icon__label">Калькулятор</span>
+      </button>
+
+      <button class="desktop-icon" type="button" data-app="timer">
+        <img class="desktop-icon__img" src="img/icons/icon3.png" alt="">
+        <span class="desktop-icon__label">Таймер</span>
+      </button>
+
+      <button class="desktop-icon" type="button" data-app="kabanos-ninja">
+        <img class="desktop-icon__img" src="img/icons/icon4.png" alt="">
+        <span class="desktop-icon__label">Кабанос-Ниндзя</span>
+      </button>
+
+      <button class="desktop-icon" type="button" data-app="cs">
+        <img class="desktop-icon__img" src="img/icons/icon5.png" alt="">
+        <span class="desktop-icon__label">CS?</span>
+      </button>
+
+      <button class="desktop-icon" type="button" data-app="cubes">
+        <img class="desktop-icon__img" src="img/icons/icon6.png" alt="">
+        <span class="desktop-icon__label">КУБЫ</span>
+      </button>
+    </section>
+
+    <div class="desktop-center">
+      <img class="center-image" src="img/bg.jpg" alt="">
+    </div>
+  </main>
+  <div class="wm" id="wm"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
