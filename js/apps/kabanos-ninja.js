@@ -15,25 +15,34 @@ export function createKabanosNinjaApp() {
   const overlayText = document.createElement("div");
   overlayText.className = "kn-overlay-text";
 
+  const overlayStats = document.createElement("div");
+  overlayStats.className = "kn-overlay-stats";
+
   const overlayBtn = document.createElement("button");
   overlayBtn.className = "kn-btn";
   overlayBtn.type = "button";
 
   overlay.appendChild(overlayText);
+  overlay.appendChild(overlayStats);
   overlay.appendChild(overlayBtn);
   field.appendChild(overlay);
   root.appendChild(field);
 
   let running = false;
+  let score = 0;
+  let best = Number(localStorage.getItem("knBest") || 0);
   let missed = 0;
+
   let spawnId = null;
   let rafId = null;
   let lastT = 0;
+
   const items = new Set();
 
-  function showOverlay(text, btnText) {
+  function showOverlay(text, btnText, statsText = "") {
     overlayText.textContent = text;
     overlayBtn.textContent = btnText;
+    overlayStats.textContent = statsText;
     overlay.classList.remove("is-hidden");
   }
 
@@ -57,7 +66,13 @@ export function createKabanosNinjaApp() {
     running = false;
     clearTimers();
     clearItems();
-    showOverlay(text, "Заново");
+
+    if (score > best) {
+      best = score;
+      localStorage.setItem("knBest", String(best));
+    }
+
+    showOverlay(text, "Заново", `Поймано: ${score}   Лучший: ${best}`);
   }
 
   function spawnOne() {
@@ -69,24 +84,24 @@ export function createKabanosNinjaApp() {
     el.alt = "";
     el.draggable = false;
 
-    const fw = field.clientWidth;
-    const fh = field.clientHeight;
-    const rot = r(-80, 80);
-    
     field.appendChild(el);
 
-    const bw = el.getBoundingClientRect().width;
+    const fw = field.clientWidth;
+    const fh = field.clientHeight;
+
+    const bw = el.getBoundingClientRect().width || 50;
     const pad = 6;
 
     const x = Math.max(pad, Math.min(fw - bw - pad, r(pad, fw - bw - pad)));
     const y = -r(60, 160);
     const vy = r(160, 320);
+    const rot = r(-80, 80);
 
     el.style.left = x + "px";
     el.style.top = y + "px";
     el.style.transform = `rotate(${rot}deg)`;
 
-    const it = { el, x, y, vy };
+    const it = { el, y, vy, rot, rotSpeed: r(-25, 25) };
 
     el.addEventListener("pointerdown", (e) => {
       e.preventDefault();
@@ -94,6 +109,7 @@ export function createKabanosNinjaApp() {
       if (!running) return;
       items.delete(it);
       el.remove();
+      score += 1;
     });
 
     items.add(it);
@@ -118,18 +134,18 @@ export function createKabanosNinjaApp() {
 
     items.forEach((it) => {
       it.y += it.vy * dt;
-      it.el.style.top = it.y + "px";
+      it.rot += it.rotSpeed * dt;
 
-      const h = it.el.getBoundingClientRect().height;
+      it.el.style.top = it.y + "px";
+      it.el.style.transform = `rotate(${it.rot}deg)`;
+
+      const h = it.el.getBoundingClientRect().height || 120;
 
       if (it.y > fh + h) {
         items.delete(it);
         it.el.remove();
         missed += 1;
-
-        if (missed >= 10) {
-          endGame("КАБАНОСЫ УПАЛИ");
-        }
+        if (missed >= 10) endGame("КАБАНОСЫ УПАЛИ");
       }
     });
 
@@ -138,20 +154,22 @@ export function createKabanosNinjaApp() {
 
   function start() {
     running = true;
+    score = 0;
     missed = 0;
     lastT = 0;
+
     clearTimers();
     clearItems();
     hideOverlay();
 
     spawnOne();
-    spawnId = setInterval(spawnOne, 200);
+    spawnId = setInterval(spawnOne, 520);
     rafId = requestAnimationFrame(loop);
   }
 
   overlayBtn.addEventListener("click", start);
 
-  showOverlay("КАБАНОС-НИНДЗЯ", "Начать");
+  showOverlay("КАБАНОС-НИНДЗЯ", "Начать", `Лучший: ${best}`);
 
   function cleanup() {
     running = false;

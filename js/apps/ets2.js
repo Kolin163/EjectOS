@@ -29,11 +29,15 @@ export function createEts2App() {
   const overlayText = document.createElement("div");
   overlayText.className = "ets2-overlay-text";
 
+  const overlayStats = document.createElement("div");
+  overlayStats.className = "ets2-overlay-stats";
+
   const overlayBtn = document.createElement("button");
   overlayBtn.className = "ets2-btn";
   overlayBtn.type = "button";
 
   overlay.appendChild(overlayText);
+  overlay.appendChild(overlayStats);
   overlay.appendChild(overlayBtn);
 
   field.appendChild(road);
@@ -43,14 +47,35 @@ export function createEts2App() {
 
   let running = false;
   let playerLane = 1;
+
   let spawnId = null;
   let rafId = null;
   let lastT = 0;
+
+  let distance = 0;
+  let best = Number(localStorage.getItem("ets2Best") || 0);
+
   const obstacles = new Set();
 
-  function showOverlay(text, btnText) {
+  let laneW = 0;
+
+  function updateLaneW() {
+    laneW = Math.max(1, Math.floor(field.clientWidth / 3));
+  }
+
+  function xForLane(lane) {
+    return lane * laneW + laneW / 2;
+  }
+
+  function updatePlayerPos() {
+    updateLaneW();
+    player.style.left = xForLane(playerLane) + "px";
+  }
+
+  function showOverlay(text, btnText, statsText = "") {
     overlayText.textContent = text;
     overlayBtn.textContent = btnText;
+    overlayStats.textContent = statsText;
     overlay.classList.remove("is-hidden");
   }
 
@@ -70,16 +95,23 @@ export function createEts2App() {
     obstacles.clear();
   }
 
-  function endGame() {
+  function endGame(text) {
     running = false;
     clearTimers();
-    clearObstacles();
-    showOverlay("ЛЕЕЕЕ, ЧУБЕР ОПЯТЬ СЛОМАЛ ФУРУ", "Заново");
-  }
 
-  function updatePlayerPos() {
-    const laneW = lanes[0].clientWidth;
-    player.style.left = playerLane * laneW + laneW / 2 + "px";
+    const d = Math.floor(distance);
+    if (d > best) {
+      best = d;
+      localStorage.setItem("ets2Best", String(best));
+    }
+
+    clearObstacles();
+
+    showOverlay(
+      text,
+      "Заново",
+      `Проехал: ${d}   Лучший: ${best}`
+    );
   }
 
   function moveLeft() {
@@ -101,20 +133,21 @@ export function createEts2App() {
   function spawnObstacle() {
     if (!running) return;
 
+    updateLaneW();
+
     const lane = r(0, 2);
     const el = document.createElement("div");
     el.className = "ets2-obstacle";
 
-    const laneW = lanes[0].clientWidth;
-    el.style.left = lane * laneW + laneW / 2 + "px";
-    el.style.top = "-60px";
+    el.style.left = xForLane(lane) + "px";
+    el.style.top = "-80px";
 
     road.appendChild(el);
 
-    const ob = { el, lane, y: -60, vy: 280 };
+    const ob = { el, y: -80, lane, baseVy: r(240, 340) };
     obstacles.add(ob);
 
-    if (obstacles.size > 15) {
+    if (obstacles.size > 18) {
       const first = obstacles.values().next().value;
       if (first) {
         obstacles.delete(first);
@@ -128,14 +161,12 @@ export function createEts2App() {
 
     for (const ob of obstacles) {
       const oRect = ob.el.getBoundingClientRect();
-
       if (
         pRect.left < oRect.right &&
         pRect.right > oRect.left &&
         pRect.top < oRect.bottom &&
         pRect.bottom > oRect.top
       ) {
-        endGame();
         return true;
       }
     }
@@ -149,59 +180,78 @@ export function createEts2App() {
     const dt = Math.min(0.05, (t - lastT) / 1000);
     lastT = t;
 
+    distance += 90 * dt;
+
     const fh = field.clientHeight;
+    const speedBoost = Math.min(260, distance * 0.12);
 
     obstacles.forEach((ob) => {
-      ob.y += ob.vy * dt;
+      ob.y += (ob.baseVy + speedBoost) * dt;
       ob.el.style.top = ob.y + "px";
 
-      if (ob.y > fh + 60) {
+      if (ob.y > fh + 120) {
         obstacles.delete(ob);
         ob.el.remove();
       }
     });
 
-    if (!checkCollision()) {
-      rafId = requestAnimationFrame(loop);
+    if (checkCollision()) {
+      endGame("ЛЕЕЕЕ, ЧУБЕР ОПЯТЬ СЛОМАЛ ФУРУ");
+      return;
     }
+
+    rafId = requestAnimationFrame(loop);
   }
 
   function start() {
     running = true;
     playerLane = 1;
     lastT = 0;
+    distance = 0;
+
     clearTimers();
     clearObstacles();
     hideOverlay();
 
     updatePlayerPos();
-
     spawnObstacle();
-    spawnId = setInterval(spawnObstacle, 680);
+
+    spawnId = setInterval(spawnObstacle, 650);
     rafId = requestAnimationFrame(loop);
   }
 
-  overlayBtn.addEventListener("click", start);
-
-  field.addEventListener("pointerdown", (e) => {
+  function onPointerDown(e) {
     if (!running) return;
-    const fw = field.clientWidth;
-    if (e.offsetX < fw / 2) moveLeft();
+    const rect = field.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < rect.width / 2) moveLeft();
     else moveRight();
-  });
+  }
 
-  document.addEventListener("keydown", (e) => {
+  function onKeyDown(e) {
     if (!running) return;
     if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") moveLeft();
     if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") moveRight();
-  });
+  }
 
-  showOverlay("ETS2", "Начать");
+  function onResize() {
+    updatePlayerPos();
+  }
+
+  overlayBtn.addEventListener("click", start);
+  field.addEventListener("pointerdown", onPointerDown);
+  document.addEventListener("keydown", onKeyDown);
+  window.addEventListener("resize", onResize);
+
+  showOverlay("ETS2", "Начать", `Лучший: ${best}`);
 
   function cleanup() {
     running = false;
     clearTimers();
     clearObstacles();
+    field.removeEventListener("pointerdown", onPointerDown);
+    document.removeEventListener("keydown", onKeyDown);
+    window.removeEventListener("resize", onResize);
   }
 
   return { el: root, cleanup };

@@ -20,17 +20,23 @@ export function createCsApp() {
 
   const overlayText = document.createElement("div");
   overlayText.className = "cs-overlay-text";
+  
+  const overlayStats = document.createElement("div");
+  overlayStats.className = "cs-overlay-stats";
 
   const overlayBtn = document.createElement("button");
   overlayBtn.className = "cs-btn";
   overlayBtn.type = "button";
 
   overlay.appendChild(overlayText);
+  overlay.appendChild(overlayStats);
   overlay.appendChild(overlayBtn);
   field.appendChild(overlay);
   root.appendChild(field);
 
   let running = false;
+  let score = 0;
+  let best = Number(localStorage.getItem("csBest") || 0);
   let spawnT = null;
   let failT = null;
   let current = null;
@@ -47,9 +53,10 @@ export function createCsApp() {
     current = null;
   }
 
-  function showOverlay(text, btnText) {
+  function showOverlay(text, btnText, statsText = "") {
     overlayText.textContent = text;
     overlayBtn.textContent = btnText;
+    overlayStats.textContent = statsText;
     overlay.classList.remove("is-hidden");
   }
 
@@ -61,26 +68,28 @@ export function createCsApp() {
     running = false;
     clearTimers();
     removeCurrent();
-    showOverlay(reason, "Заново");
+
+    if (score > best) {
+      best = score;
+      localStorage.setItem("csBest", String(best));
+    }
+
+    showOverlay(reason, "Заново", `Счет: ${score}   Лучший: ${best}`);
   }
 
   function placeInField(el) {
     field.appendChild(el);
-
     const f = field.getBoundingClientRect();
     const b = el.getBoundingClientRect();
-
     const pad = 10;
     const maxX = Math.max(pad, f.width - b.width - pad);
     const maxY = Math.max(pad, f.height - b.height - pad);
-
     el.style.left = r(pad, Math.floor(maxX)) + "px";
     el.style.top = r(pad, Math.floor(maxY)) + "px";
   }
 
   function spawnNext() {
     if (!running) return;
-
     clearTimers();
     removeCurrent();
 
@@ -89,7 +98,6 @@ export function createCsApp() {
       if (!running) return;
 
       const p = pickPhrase();
-
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "cs-phrase " + (p.type === "good" ? "is-good" : "is-bad");
@@ -104,7 +112,8 @@ export function createCsApp() {
           endGame("НУ РАЗ НАЖАЛ ЗНАЧИТ СОГЛАСЕН");
           return;
         }
-
+        
+        score++;
         spawnNext();
       });
 
@@ -127,13 +136,13 @@ export function createCsApp() {
 
   function startGame() {
     running = true;
+    score = 0;
     hideOverlay();
     spawnNext();
   }
 
   overlayBtn.addEventListener("click", startGame);
-
-  showOverlay("CS?", "Начать");
+  showOverlay("CS?", "Начать", `Лучший: ${best}`);
 
   function cleanup() {
     running = false;
